@@ -77,10 +77,10 @@ router.get('/userinfo', function(req, res) {
           res.json({success: false, message: 'The user doesn\'t exist.', error: err});
         } else {
           var userinfo = {
-            username = user.username,
-            firstname = user.firstname,
-            lastname = user.lastname,
-            email = user.email
+            username : user.username,
+            firstname : user.firstname,
+            lastname : user.lastname,
+            email : user.email
           };
 
           res.json({success: true, message: 'Update user info successfully.', user: userinfo});
@@ -156,8 +156,8 @@ router.post('/reset_password', function(req, res) {
     },
     function(user, done) {
       var payload = {
-        user_id = user._id,
-        user_email = user.email
+        user_id : user._id,
+        user_email : user.email
       };
 
       jwt.sign(payload, privateSecretKey, {
