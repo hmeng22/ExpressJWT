@@ -42,7 +42,7 @@ router.post('/signin', function(req, res, next) {
       }
 
       var payload = {
-        userid: user._id;
+        userid: user._id
       };
       
       jwt.sign(payload, privateSecretKey, {
