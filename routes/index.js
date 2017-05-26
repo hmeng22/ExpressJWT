@@ -233,18 +233,32 @@ router.post('/reset_password', function(req, res) {
       });
     },
     function(user, done) {
+      var reset_password_token_key = crypto.randomBytes(24).toString('hex');
       var payload = {
         user_id : user._id,
-        user_email : user.email
+        user_email : user.email,
+        reset_password_token_key: reset_password_token_key
       };
+      var reset_password_private_secret_key = crypto.randomBytes(1024).toString('hex');
 
-      jwt.sign(payload, privateSecretKey, {
-        expiresIn: '15m'
-      }, function(err, token) {
+      user.update({
+        reset_password_private_secret_key: reset_password_private_secret_key,
+        reset_password_token_key: reset_password_token_key
+      }, function(err, u) {
         if (err) {
-          res.json({success: false, message: 'Can\'t reset the password.'});
+          res.json({success: false, message: 'Fail to reset password.', error: err});
         } else {
-          done(user, token);
+
+          jwt.sign(payload, reset_password_private_secret_key, {
+            expiresIn: '15m'
+          }, function(err, token) {
+            if (err) {
+              res.json({success: false, message: 'Can\'t reset the password.'});
+            } else {
+              done(user, token);
+            }
+          });
+
         }
       });
 
@@ -254,7 +268,7 @@ router.post('/reset_password', function(req, res) {
         to: user.email,
         from: 'noreplay@public.com',
         subject: 'Reset password',
-        text: 'Please click on the following link, or paste this into your browser to complete the process:\n\n' + 'http://' + req.headers.host + '/password_reset_change/' + token + '\n\n' + 'If you did not request this, please ignore this email and your password will remain unchanged.\n'
+        text: 'Please click on the following link, or paste this into your browser to complete the process:\n\n' + 'http://' + req.headers.host + '/reset_password/' + token + '\n\n' + 'If you did not request this, please ignore this email and your password will remain unchanged.\n'
       };
       transporter.sendMail(mailOptions, function(err) {
         if (err) {
@@ -272,23 +286,54 @@ router.post('/reset_password', function(req, res) {
 });
 
 router.get('/reset_password/:token', function(req, res) {
-  jwt.verfiy(token, privateSecretKey, function(err, decoded) {
-    if (err) {
-      res.json({success: false, message: 'The token is invalid.', error: err});
-    } else {
-      res.json({success: true, message: 'Render reset password page here.'});
-    }
-  });
+  var d = jwt.decode(token);
+  if (d.user_id) {
+    User.findById(d.user_id, function(err, u) {
+      if (err) {
+        res.json({success: false, message: 'Fail to find the user.', error: err});
+      } else {
+        jwt.verify(token, u.reset_password_private_secret_key, function(err, decoded) {
+          if (err) {
+            res.json({success: false, message: 'Token is invalid, fail to reset password.', error: err});
+          } else {
+            if (decoded.reset_password_token_key === u.reset_password_token_key) {
+
+              res.json({success: true, message: 'Render reset password page here.'});
+            } else {
+              res.json({success: false, message: 'Token is invalid, fail to reset password.'});
+            }
+          }
+        });
+      }
+    });
+  } else {
+    res.json({success: false, message: 'Token is invalid, fail to reset password.'});
+  }
 }).post('/reset_password/:token', function(req, res) {
   async.waterfall([
     function(done) {
-      jwt.verfiy(token, privateSecretKey, function(err, decoded) {
-        if (err) {
-          res.json({success: false, message: 'The token is invalid.', error: err});
-        } else {
-          done(decoded);
-        }
-      });
+      var d = jwt.decode(token);
+      if (d.user_id) {
+        User.findById(d.user_id, function(err, u) {
+          if (err) {
+            res.json({success: false, message: 'Fail to find the user.', error: err});
+          } else {
+            jwt.verify(token, u.reset_password_private_secret_key, function(err, decoded) {
+              if (err) {
+                res.json({success: false, message: 'Token is invalid, fail to reset password.', error: err});
+              } else {
+                if (decoded.reset_password_token_key === u.reset_password_token_key) {
+                  done(decode);
+                } else {
+                  res.json({success: false, message: 'Token is invalid, fail to reset password.'});
+                }
+              }
+            });
+          }
+        });
+      } else {
+        res.json({success: false, message: 'Token is invalid, fail to reset password.'});
+      }
     },
     function(decoded, done) {
       User.findOne({
@@ -299,15 +344,22 @@ router.get('/reset_password/:token', function(req, res) {
         } else {
 
           // validate new password double check 2 new password
-          user.setPassword(req.body.confirm, function() {
-            user.save(function(err) {
-              if (err) {
-                res.json({success: false, message: 'Fail to reset password.', error: err});
-              }
-            });
-          });
+          user.setPassword(req.body.confirm, function(err) {
+            if (err) {
+              res.json({success: false, message: 'Reset password error.', error: err});
+            } else {
+              u.reset_password_token_key = '';
+              user.save(function(err) {
+                if (err) {
+                  res.json({success: false, message: 'Fail to reset password.', error: err});
+                } else {
 
-          done(user, done);
+                  done(user, done);
+                }
+              });
+            }
+          });
+          
         }
       });
     },
