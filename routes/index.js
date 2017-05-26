@@ -29,16 +29,16 @@ router.post('/signin', function(req, res, next) {
   passport.authenticate('local', function(err, user, info) {
     if (err) {
       console.log("signin Error : ", err);
-      return res.json({success: false, message: 'Invalid username or password.', error: err});
+       res.json({success: false, message: 'Invalid username or password.', error: err});
     }
     if (!user) {
-      return res.json({success: false, message: 'The user doesn\'t exist. Invalid username or password.'});
+       res.json({success: false, message: 'The user doesn\'t exist. Invalid username or password.'});
     }
     // signin successfully, return token
     req.logIn(user, function(err) {
       if (err) {
         console.log("logIn Error : ", err);
-        return res.json({success: false, message: 'Fail to sign in.', error: err});
+         res.json({success: false, message: 'Fail to sign in.', error: err});
       }
 
       var payload = {
@@ -46,18 +46,96 @@ router.post('/signin', function(req, res, next) {
       };
       
       jwt.sign(payload, privateSecretKey, {
-        expiresIn: '1h'
+        expiresIn: process.env.TOKEN_EXPIRATION
       }, function(err, token) {
         if (err) {
           console.log("Token Error : ", err);
+          res.json({success: false, message: 'Fail to generate token.', error: err});
         } else {
-          return res.json({success: true, message: 'Generate token successfully.', token: token});
+          var refresh_token_key = crypto.randomBytes(24).toString('hex');
+          var refresh_token_payload = {
+            user_id: user._id,
+            refresh_token_key: refresh_token_key
+          };
+          var refresh_token_private_secret_key = crypto.randomBytes(1024).toString('hex');
+
+          jwt.sign(refresh_token_payload, refresh_token_private_secret_key, function(err, refresh_token) {
+
+            user.update({
+              refresh_token_private_secret_key: refresh_token_private_secret_key,
+              refresh_token_key: refresh_token_key
+            }, function(err, u) {
+              if (err) {
+                console.log("logIn Error : ", err);
+                res.json({success: false, message: 'Fail to sign in.', error: err});
+              } else {
+                var token = {
+                  token_type: 'JWT',
+                  access_token: access_token,
+                  expires_in: process.env.TOKEN_EXPIRATION,
+                  refresh_token: refresh_token
+                };
+
+                res.json({success: true, message: 'Generate token successfully.', token: token});
+              }
+            });
+          });
+          
+           res.json({success: true, message: 'Generate token successfully.', token: token});
         }
       });
 
     });
   })(req, res, next);
 });
+
+router.post('/refreshtoken', function(req, res) {
+  var refresh_token = req.body.refresh_token || req.query.refresh_token || req.params.refresh_token || req.headers.refresh_token;
+
+  var d = jwt.decode(refresh_token);
+  if (d.user_id) {
+    User.findById(d.user_id, function(err, u) {
+      if (err) {
+        res.json({success: false, message: 'Fail to find the user.', error: err});
+      } else {
+        jwt.verify(refresh_token, u.refresh_token_private_secret_key, function(err, decoded) {
+          if (err) {
+            res.json({success: false, message: 'Token is invalid, fail to refresh token.', error: err});
+          } else {
+            if (decoded.refresh_token_key === u.refresh_token_key) {
+
+              var payload = {
+                user_id: u._id
+              };
+
+              jwt.sign(payload, privateSecretKey, {
+                expiresIn: process.env.TOKEN_EXPIRATION
+              }, function(err, access_token) {
+                if (err) {
+                  res.json({success: false, message: 'Generate token error, fail to refresh token. ', error: err});
+                } else {
+
+                  var token = {
+                    token_type: 'JWT',
+                    access_token: access_token,
+                    expires_in: process.env.TOKEN_EXPIRATION
+                  };
+
+                  res.json({success: true, message: 'Refresh token successfully.', token: token});
+                }
+              });
+
+            } else {
+              res.json({success: false, message: 'Token is invalid, fail to refresh token.'});
+            }
+          }
+        });
+      }
+    });
+  } else {
+    res.json({success: false, message: 'Token is invalid, fail to refresh token.'});
+  }
+}),
 
 router.get('/userinfo', function(req, res) {
   async.waterfall([
