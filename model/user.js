@@ -31,7 +31,9 @@ var userSchema = new Schema({
       'client', 'admin'
     ],
     default: 'client'
-  }
+  },
+  refresh_token_private_secret_key: String,
+  refresh_token_key: String
 });
 
 userSchema.plugin(passportLocalMongoose, {usernameField: 'username'});
