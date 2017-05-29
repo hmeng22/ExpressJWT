@@ -32,16 +32,8 @@ var multerReceiverVideo = multer({
   }
 });
 
-
-// Project
 router.get('/test', function(req, res, next) {
   res.render('index', {title: 'Test'})
 });
-
-// router.get('/projects', Thing.getAll);
-// router.get('/project/:project_id', Thing.getById);
-// router.post('/project/thing/', Thing.create);
-// router.put('/project/:project_id', Thing.update);
-// router.delete('/project/:project_id', Thing.delete);
 
 module.exports = router;
