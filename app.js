@@ -52,6 +52,10 @@ app.use('/v1/*', expressJwt({
     // header authorization Bearer is handled by default
     if (req.headers.authorization && req.headers.authorization.split(' ')[0] === 'Bearer') {
       return req.headers.authorization.split(' ')[1];
+    } else if (req.headers.authorization && req.headers.authorization.split(' ')[0] === 'JWT') {
+      return req.headers.authorization.split(' ')[1];
+    } else if (req.headers && req.headers.token) {
+      return req.headers.token;
     } else if (req.body && req.body.token) {
       return req.body.token;
     } else if (req.query && req.query.token) {
