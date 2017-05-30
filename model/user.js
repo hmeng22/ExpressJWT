@@ -29,6 +29,7 @@ var userSchema = new Schema({
     ],
     default: 'client'
   },
+  access_token_valid_key: String,
   reset_password_private_secret_key: String,
   reset_password_token_key: String,
   refresh_token_private_secret_key: String,
