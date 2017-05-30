@@ -46,7 +46,7 @@ passport.deserializeUser(User.deserializeUser());
 // app.use('/v1/*', auth.authenticate());
 var jwt = require('jsonwebtoken');
 var privateSecretKey = require('fs').readFileSync('./privateSecret.key');
-app.use('/v1/*', expressJwt({
+app.use(['/v1/*', '/user', '/signout'], expressJwt({
   secret: privateSecretKey,
   getToken: function(req) {
     // header authorization Bearer is handled by default
@@ -62,6 +62,18 @@ app.use('/v1/*', expressJwt({
       return req.query.token;
     }
     return null;
+  },
+  isRevoked: function(req, payload, done) {
+    User.findById(payload.user_id, (err, u) => {
+      if (err) {
+        return done(err);
+      } else {
+        if (u.access_token_valid_key == payload.access_token_valid_key) {
+          return done(null, false)
+        }
+        return done(null, true)
+      }
+    })
   }
 }), function(err, req, res, next) {
   if (err.name === 'UnauthorizedError') {
