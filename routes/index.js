@@ -12,10 +12,11 @@ router.get('/apis', function(req, res) {
 });
 
 router.post('/signup', sysController.signup);
-router.post('/signin', sysController.signup);
-router.post('/refreshtoken', sysController.refreshtoken),
-router.post('/signout', sysController.signout);
+router.post('/signin', sysController.signin);
 
+router.post('/refreshtoken', sysController.refreshtoken),
+
+router.post('/signout', sysController.signout);
 router.get('/user', sysController.userinfo);
 router.post('/user', sysController.update);
 
