@@ -11,15 +11,19 @@ var nodemailer = require('nodemailer')
 var transporter = nodemailer.createTransport('smtps://')
 
 var winston = require('winston')
-var log = new winston.Logger()
+var log = new(winston.Logger)({
+  level: 'info',
+  transports: [new(winston.transports.Console)()],
+  exitOnError: false
+});
 
 var sysController = {
   /**
   * @apiDefine ResponseJSON
   *
-  * @apiSuccess {success} Specify if the request is successful.
-  * @apiSuccess {message} Message.
-  * @apiSuccess {error} Error message when 'success' is false.
+  * @apiSuccess {Boolean} success Specify if the request is successful.
+  * @apiSuccess {String} message Message.
+  * @apiSuccess {Object} error Error message when 'success' is false.
   */
 
   /**
@@ -34,7 +38,6 @@ var sysController = {
   * @apiParam {String} email Email (Mandatory)
   *
   * @apiUse ResponseJSON
-  * @apiSuccess {user} new user info.
   */
   signup(req, res) {
     log.info("signup() : User info :", req.body)
@@ -43,8 +46,8 @@ var sysController = {
         log.error("signup() : Error : ", err)
         res.json({success: false, message: 'Cant create user.', error: err})
       } else {
-        log.log("signup() : New user : ", user)
-        res.json({success: true, message: 'Create user successfully.', user: user})
+        log.info("signup() : Create new user successfully.")
+        res.json({success: true, message: 'Create user successfully.'})
       }
     })
   },
@@ -66,22 +69,24 @@ var sysController = {
     passport.authenticate('local', (err, user, info) => {
       if (err) {
         log.error("signin() : Authenticate Error : ", err)
-        res.json({success: false, message: 'Invalid username or password.', error: err})
+        return res.json({success: false, message: 'Invalid username or password.', error: err})
       }
       if (!user) {
         log.error("signin() : Cannot find the user.")
-        res.json({success: false, message: 'The user doesn\'t exist. Invalid username or password.'})
+        return res.json({success: false, message: 'The user doesn\'t exist. Invalid username or password.'})
       }
 
       log.info("signin() : Start to logIn.")
       req.logIn(user, (err) => {
         if (err) {
           log.error("signin() : logIn Error : ", err)
-          res.json({success: false, message: 'Fail to sign in.', error: err})
+          return res.json({success: false, message: 'Fail to sign in.', error: err})
         }
 
+        var access_token_valid_key = crypto.randomBytes(24).toString('hex')
         var payload = {
-          userid: user._id
+          user_id: user._id,
+          access_token_valid_key: access_token_valid_key
         }
 
         jwt.sign(payload, privateSecretKey, {
@@ -89,7 +94,7 @@ var sysController = {
         }, (err, access_token) => {
           if (err) {
             log.error("signin() : Sign Access Token Error : ", err)
-            res.json({success: false, message: 'Fail to generate access token.', error: err})
+            return res.json({success: false, message: 'Fail to generate access token.', error: err})
           } else {
             var refresh_token_key = crypto.randomBytes(24).toString('hex')
             var refresh_token_payload = {
@@ -100,12 +105,13 @@ var sysController = {
 
             jwt.sign(refresh_token_payload, refresh_token_private_secret_key, (err, refresh_token) => {
               user.update({
+                access_token_valid_key: access_token_valid_key,
                 refresh_token_private_secret_key: refresh_token_private_secret_key,
                 refresh_token_key: refresh_token_key
               }, (err, u) => {
                 if (err) {
                   log.error("signin() : Sign Refresh Token Error : ", err)
-                  res.json({success: false, message: 'Fail to generate refresh token.', error: err})
+                  return res.json({success: false, message: 'Fail to generate refresh token.', error: err})
                 } else {
                   var token = {
                     token_type: 'JWT',
@@ -115,7 +121,8 @@ var sysController = {
                   }
 
                   log.info("signin() : Sign in Successfully.")
-                  res.json({success: true, message: 'Generate token successfully.', token: token})
+                  log.info(req.user)
+                  return res.json({success: true, message: 'Generate token successfully.', token: token})
                 }
               })
             })
@@ -155,7 +162,8 @@ var sysController = {
               if (decoded.refresh_token_key === u.refresh_token_key) {
 
                 var payload = {
-                  user_id: u._id
+                  user_id: u._id,
+                  access_token_valid_key: u.access_token_valid_key
                 }
 
                 jwt.sign(payload, privateSecretKey, {
@@ -165,15 +173,24 @@ var sysController = {
                     log.error("refreshtoken() : Fail to generate new access token. : ", err)
                     res.json({success: false, message: 'Generate token error, fail to refresh token. ', error: err})
                   } else {
+                    user.update({
+                      access_tokens: access_token
+                    }, (err, u) => {
+                      if (err) {
+                        log.error("refreshtoken() : Fail to save new access token : ", err)
+                        return res.json({success: false, message: 'Fail to refresh access token.', error: err})
+                      } else {
 
-                    var token = {
-                      token_type: 'JWT',
-                      access_token: access_token,
-                      expires_in: process.env.TOKEN_EXPIRATION
-                    }
+                        var token = {
+                          token_type: 'JWT',
+                          access_token: access_token,
+                          expires_in: process.env.TOKEN_EXPIRATION
+                        }
 
-                    log.info("refreshtoken() : Generate a new access token successfully.")
-                    res.json({success: true, message: 'Refresh token successfully.', token: token})
+                        log.info("refreshtoken() : Generate a new access token successfully.")
+                        return res.json({success: true, message: 'Refresh token successfully.', token: token})
+                      }
+                    })
                   }
                 })
 
@@ -204,41 +221,25 @@ var sysController = {
   * @apiSuccess {user} user info.
   */
   userinfo(req, res) {
-    async.waterfall([
-      (done) => {
-        var token = req.body.token || req.query.token || req.headers['x-access-token']
-        jwt.verfiy(token, privateSecretKey, (err, decoded) => {
-          if (err) {
-            log.error("userinfo() : Fail to verify the token : ", err)
-            res.json({success: false, message: 'The token is invalid.', error: err})
-          } else {
-            log.info("userinfo() : Verfiy the token successfully.")
-            done(decode)
-          }
-        })
-      },
-      (decode, done) => {
-        User.findById(decode.user_id, (err, user) => {
-          if (err) {
-            log.error("userinfo() : Cannot find the user : ", err)
-            res.json({success: false, message: 'The user doesn\'t exist.', error: err})
-          } else {
-            var userinfo = {
-              username: user.username,
-              firstname: user.firstname,
-              lastname: user.lastname,
-              email: user.email
-            }
-
-            log.info("userinfo() : Find the user successfully.")
-            res.json({success: true, message: 'Update user info successfully.', user: userinfo})
-          }
-        })
-      }
-    ], (err) => {
+    User.findById(req.user.user_id, (err, user) => {
       if (err) {
-        log.error("userinfo() : Fail to get user info.")
-        res.json({success: false, message: 'Fail to get user info.', error: err})
+        log.error("userinfo() : Cannot find the user : ", err)
+        res.json({success: false, message: 'The user doesn\'t exist.', error: err})
+      } else {
+        if (!user) {
+          log.error("userinfo() : Cannot find the user.")
+          return res.json({success: false, message: 'The access token is invalid.'})
+        } else {
+          var userinfo = {
+            username: user.username,
+            firstname: user.firstname,
+            lastname: user.lastname,
+            email: user.email
+          }
+
+          log.info("userinfo() : Find the user successfully.")
+          res.json({success: true, message: 'Update user info successfully.', user: userinfo})
+        }
       }
     })
   },
@@ -256,44 +257,25 @@ var sysController = {
   * @apiUse ResponseJSON
   */
   update(req, res) {
-    async.waterfall([
-      (done) => {
-        var token = req.body.token || req.query.token || req.headers['x-access-token']
-        jwt.verfiy(token, privateSecretKey, (err, decoded) => {
-          if (err) {
-            log.error("update() : Fail to verify the token : ", err)
-            res.json({success: false, message: 'The token is invalid.', error: err})
-          } else {
-            log.info("update() : Verfiy the token successfully.")
-            done(decode)
-          }
-        })
-      },
-      (decode, done) => {
-        User.findById(decode.user_id, (err, user) => {
-          if (err) {
-            log.error("update() : Cannot find the user : ", err)
-            res.json({success: false, message: 'The user doesn\'t exist.', error: err})
-          } else {
-            log.info("update() : New user info.", user, req.body.userinfo)
-            user.setPassword(req.body.user.newpassword, () => {
-              user.save((err) => {
-                if (err) {
-                  log.error("update() : Fail to update user info : ", err)
-                  res.json({success: false, message: 'Fail to update user info.', error: err})
-                } else {
-                  log.info("update() : Update user info successfully.")
-                  res.json({success: true, message: 'Update user info successfully.'})
-                }
-              })
-            })
-          }
-        })
-      }
-    ], (err) => {
+    User.findById(req.user.user_id, (err, user) => {
       if (err) {
-        log.error("update() : Fail to update user info.")
-        res.json({success: false, message: 'Fail to update user info.', error: err})
+        log.error("update() : Cannot find the user : ", err)
+        res.json({success: false, message: 'The user doesn\'t exist.', error: err})
+      } else {
+        log.info("update() : New user info.", req.body)
+        user.setPassword(req.body.userinfo.newpassword, () => {
+          user.access_token_valid_key = '';
+
+          user.save((err) => {
+            if (err) {
+              log.error("update() : Fail to update user info : ", err)
+              res.json({success: false, message: 'Fail to update user info.', error: err})
+            } else {
+              log.info("update() : Update user info successfully.")
+              res.json({success: true, message: 'Update user info successfully.'})
+            }
+          })
+        })
       }
     })
   },
@@ -308,8 +290,25 @@ var sysController = {
   * @apiUse ResponseJSON
   */
   signout(req, res) {
-    req.logout()
-    res.json({success: true, message: 'Sign out successfully.'})
+    User.findById(req.user.user_id, (err, user) => {
+      if (err) {
+        log.error("signout() : Cannot find the user : ", err)
+        res.json({success: false, message: 'The user doesn\'t exist.', error: err})
+      } else {
+        user.access_token_valid_key = '';
+
+        user.save((err) => {
+          if (err) {
+            log.error("signout() : Fail to sign out : ", err)
+            res.json({success: false, message: 'Fail to sign out.', error: err})
+          } else {
+            log.info("signout() : Sign out successfully.")
+            req.logout()
+            res.json({success: true, message: 'Sign out successfully.'})
+          }
+        })
+      }
+    })
   },
 
   /**
@@ -338,7 +337,7 @@ var sysController = {
               res.json({success: false, message: 'The user doesn\'t exist.'})
             } else {
               log.info("reset_password() : Find the user successfully.")
-              done(user)
+              done(null, user)
             }
           }
         })
@@ -368,7 +367,7 @@ var sysController = {
                 res.json({success: false, message: 'Generate token Error.'})
               } else {
                 log.info("reset_password() : Generate token successfully.")
-                done(user, token)
+                done(null, user, token)
               }
             })
           }
@@ -467,8 +466,8 @@ var sysController = {
                   res.json({success: false, message: 'Token is invalid, fail to reset password.', error: err})
                 } else {
                   if (decoded.reset_password_token_key === u.reset_password_token_key) {
-                    log.info("post_reset_password() : Verfiy user successfully.")
-                    done(decode)
+                    log.info("post_reset_password() : verify user successfully.")
+                    done(null, decoded)
                   } else {
                     log.error("post_reset_password() : Token is invalid, fail to reset password.")
                     res.json({success: false, message: 'Token is invalid, fail to reset password.'})
@@ -507,7 +506,7 @@ var sysController = {
                       res.json({success: false, message: 'Fail to reset password.', error: err})
                     } else {
                       log.info("post_reset_password() : Reset password successfully.")
-                      done(user, done)
+                      done(null, user, done)
                     }
                   })
                 }
