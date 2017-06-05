@@ -73,7 +73,7 @@ var sysController = {
       }
       if (!user) {
         log.error("signin() : Cannot find the user.")
-        return res.json({success: false, message: 'The user doesn\'t exist. Invalid username or password.'})
+        return res.json({success: false, message: 'Cannot find the user, Invalid username or password.'})
       }
 
       log.info("signin() : Start to logIn.")
@@ -121,7 +121,6 @@ var sysController = {
                   }
 
                   log.info("signin() : Sign in Successfully.")
-                  log.info(req.user)
                   return res.json({success: true, message: 'Generate token successfully.', token: token})
                 }
               })
@@ -535,17 +534,17 @@ var sysController = {
         transporter.sendMail(mailOptions, (err) => {
           if (err) {
             log.error("post_reset_password() : Fail to send the email : ", err)
-            res.json({success: false, message: 'Fail to send the email.', error: err})
+            res.json({success: false, message: 'The password has been changed, but fail to send the email.', error: err})
           } else {
             log.info("post_reset_password() : Send a Email successfully.")
-            res.json({success: true, message: 'The email has been sent successfully.'})
+            res.json({success: true, message: 'The password has be changed and an email has been sent successfully.'})
           }
         })
       }
     ], (err) => {
       if (err) {
         log.error("update() : Fail to reset password.")
-        res.json({success: false, message: 'Fail to reset password.', error: err})
+        res.json({success: false, message: 'Something wrong with reseting password.', error: err})
       }
     })
   },
