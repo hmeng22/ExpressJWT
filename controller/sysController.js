@@ -374,6 +374,8 @@ var sysController = {
         })
       },
       (user, token, done) => {
+        log.info("reset_password() : Reset password successfully.")
+        log.info("reset_password() : Token : ", token)
         var mailOptions = {
           to: user.email,
           from: 'noreplay@public.com',
@@ -389,6 +391,7 @@ var sysController = {
             res.json({success: true, message: 'The email has been sent successfully.'})
           }
         })
+
       }
     ], (err) => {
       if (err) {
@@ -408,6 +411,7 @@ var sysController = {
   * @apiUse ResponseJSON
   */
   get_reset_password(req, res) {
+    var token = req.params.token
     var d = jwt.decode(token)
     if (d.user_id) {
       User.findById(d.user_id, (err, u) => {
@@ -421,9 +425,12 @@ var sysController = {
               res.json({success: false, message: 'Token is invalid, fail to reset password.', error: err})
             } else {
               if (decoded.reset_password_token_key === u.reset_password_token_key) {
-
                 log.info("get_reset_password() : Render reset password page here.")
-                res.json({success: true, message: 'Render reset password page here.'})
+                res.render('reset_password', {
+                  title: 'Reset Password',
+                  host: process.env.HOST_URL,
+                  token: token
+                })
               } else {
                 log.error("get_reset_password() : Token is invalid, fail to reset password.")
                 res.json({success: false, message: 'Token is invalid, fail to reset password.'})
@@ -451,6 +458,8 @@ var sysController = {
   * @apiSuccess {user} user info.
   */
   post_reset_password(req, res) {
+    var token = req.params.token
+    console.log(token);
     async.waterfall([
       (done) => {
         var d = jwt.decode(token)
@@ -494,12 +503,13 @@ var sysController = {
               res.json({success: false, message: 'The user doesn\'t exist.', error: err})
             } else {
               // validate new password double check 2 new password
-              user.setPassword(req.body.confirm, (err) => {
+              user.setPassword(req.body.password, (err) => {
                 if (err) {
                   log.error("post_reset_password() : Find User Error : ", err)
                   res.json({success: false, message: 'Reset password error.', error: err})
                 } else {
-                  u.reset_password_token_key = ''
+                  user.reset_password_token_key = ''
+                  user.reset_password_private_secret_key = ''
                   user.save((err) => {
                     if (err) {
                       log.error("post_reset_password() : Fail to reset password : ", err)
