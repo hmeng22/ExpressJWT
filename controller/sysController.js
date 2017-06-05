@@ -27,9 +27,9 @@ var sysController = {
   */
 
   /**
-  * @api {post} /v1/signup Sign up
+  * @api {post} /signup 1. Sign up
   * @apiName PostSignup
-  * @apiGroup User
+  * @apiGroup Authorization
   *
   * @apiDescription Sign up will register a new user.
   *
@@ -53,9 +53,9 @@ var sysController = {
   },
 
   /**
-  * @api {post} /v1/signin Sign in
+  * @api {post} /signin 2. Sign in
   * @apiName PostSignin
-  * @apiGroup User
+  * @apiGroup Authorization
   *
   * @apiDescription Sign in needs username & password.
   *
@@ -133,9 +133,9 @@ var sysController = {
   },
 
   /**
-  * @api {post} /v1/refreshtoken Refresh Token
+  * @api {post} /refreshtoken 3. Refresh Token
   * @apiName PostRefreshtoken
-  * @apiGroup User
+  * @apiGroup Authorization
   *
   * @apiDescription Refreh token requires a refresh_token.
   *
@@ -209,7 +209,38 @@ var sysController = {
   },
 
   /**
-  * @api {get} /v1/user Get user info
+  * @api {post} /signout 4. Sign out
+  * @apiName PostSignout
+  * @apiGroup Authorization
+  *
+  * @apiDescription Sign out.
+  *
+  * @apiUse ResponseJSON
+  */
+  signout(req, res) {
+    User.findById(req.user.user_id, (err, user) => {
+      if (err) {
+        log.error("signout() : Cannot find the user : ", err)
+        res.json({success: false, message: 'The user doesn\'t exist.', error: err})
+      } else {
+        user.access_token_valid_key = '';
+
+        user.save((err) => {
+          if (err) {
+            log.error("signout() : Fail to sign out : ", err)
+            res.json({success: false, message: 'Fail to sign out.', error: err})
+          } else {
+            log.info("signout() : Sign out successfully.")
+            req.logout()
+            res.json({success: true, message: 'Sign out successfully.'})
+          }
+        })
+      }
+    })
+  },
+
+  /**
+  * @api {get} /user 1. Get user info
   * @apiName GetUser
   * @apiGroup User
   *
@@ -245,7 +276,7 @@ var sysController = {
   },
 
   /**
-  * @api {post} /v1/user Update user info
+  * @api {post} /user 2. Update user info
   * @apiName PostUser
   * @apiGroup User
   *
@@ -281,39 +312,8 @@ var sysController = {
   },
 
   /**
-  * @api {post} /v1/signout Sign out
-  * @apiName PostSignout
-  * @apiGroup User
-  *
-  * @apiDescription Sign out.
-  *
-  * @apiUse ResponseJSON
-  */
-  signout(req, res) {
-    User.findById(req.user.user_id, (err, user) => {
-      if (err) {
-        log.error("signout() : Cannot find the user : ", err)
-        res.json({success: false, message: 'The user doesn\'t exist.', error: err})
-      } else {
-        user.access_token_valid_key = '';
-
-        user.save((err) => {
-          if (err) {
-            log.error("signout() : Fail to sign out : ", err)
-            res.json({success: false, message: 'Fail to sign out.', error: err})
-          } else {
-            log.info("signout() : Sign out successfully.")
-            req.logout()
-            res.json({success: true, message: 'Sign out successfully.'})
-          }
-        })
-      }
-    })
-  },
-
-  /**
-  * @api {post} /v1/reset_password Request to reset password
-  * @apiName PostResetPassword
+  * @api {post} /reset_password 3. Request to reset password
+  * @apiName RequestResetPassword
   * @apiGroup User
   *
   * @apiDescription Request to reset password and send an email.
@@ -402,7 +402,7 @@ var sysController = {
   },
 
   /**
-  * @api {get} /v1/reset_password Get reset password Page
+  * @api {get} /reset_password 4. Get reset password Page
   * @apiName GetResetPassword
   * @apiGroup User
   *
@@ -446,7 +446,7 @@ var sysController = {
   },
 
   /**
-  * @api {post} /v1/reset_password Reset password
+  * @api {post} /reset_password 5. Reset password
   * @apiName PostResetPassword
   * @apiGroup User
   *
@@ -548,7 +548,7 @@ var sysController = {
         res.json({success: false, message: 'Fail to reset password.', error: err})
       }
     })
-  }
+  },
 }
 
 module.exports = sysController
