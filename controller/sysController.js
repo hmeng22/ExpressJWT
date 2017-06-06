@@ -24,7 +24,7 @@ var transporter = nodemailer.createTransport({
 
 var winston = require('winston')
 var log = new(winston.Logger)({
-  level: 'info',
+  level: process.env.LOG_LEVEL,
   transports: [new(winston.transports.Console)()],
   exitOnError: false
 });
