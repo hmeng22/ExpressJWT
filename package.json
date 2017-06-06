@@ -3,9 +3,10 @@
   "version": "0.0.0",
   "private": true,
   "scripts": {
-    "start": "node ./bin/www",
+    "start": "pm2 start pm2.config.js",
     "dev": "nodemon ./bin/www",
-    "doc": "apidoc -i controller/ -o public"
+    "doc": "apidoc -i controller/ -o public",
+    "test": "mocha"
   },
   "dependencies": {
     "async": "^2.4.0",
@@ -32,6 +33,9 @@
   },
   "devDependencies": {
     "apidoc": "^0.17.6",
+    "chai": "^4.0.1",
+    "chai-http": "^3.0.0",
+    "mocha": "^3.4.2",
     "nodemon": "^1.11.0"
   },
   "apidoc": {
