@@ -8,7 +8,19 @@ var jwt = require('jsonwebtoken')
 var privateSecretKey = require('fs').readFileSync('./privateSecret.key')
 
 var nodemailer = require('nodemailer')
-var transporter = nodemailer.createTransport('smtps://')
+var transporter = nodemailer.createTransport({
+  host: process.env.EMAIL_CONFIG_HOST,
+  port: Number(process.env.EMAIL_CONFIG_PORT),
+  secure: process.env.EMAIL_CONFIG_SECURE === "true",
+  auth: {
+    user: process.env.EMAIL_CONFIG_AUTH_USER,
+    pass: process.env.EMAIL_CONFIG_AUTH_PASS
+  },
+  tls: {
+    // do not fail on invalid certs
+    rejectUnauthorized: process.env.EMAIL_CONFIG_TLS_REJECTUNAUTHORIZED === "true"
+  }
+})
 
 var winston = require('winston')
 var log = new(winston.Logger)({
@@ -40,7 +52,7 @@ var sysController = {
   * @apiUse ResponseJSON
   */
   signup(req, res) {
-    log.info("signup() : User info :", req.body)
+    log.debug("signup() : User info :", req.body)
     User.register(new User(req.body), req.body.password, (err, user) => {
       if (err) {
         log.error("signup() : Error : ", err)
@@ -146,23 +158,23 @@ var sysController = {
   refreshtoken(req, res) {
     var refresh_token = req.body.refresh_token || req.query.refresh_token || req.params.refresh_token || req.headers.refresh_token
 
-    var d = jwt.decode(refresh_token)
+    var d = jwt.decode(refresh_token);
     if (d.user_id) {
-      User.findById(d.user_id, (err, u) => {
+      User.findById(d.user_id, (err, user) => {
         if (err) {
           log.error("refreshtoken() : Find User Error : ", err)
           res.json({success: false, message: 'Fail to find the user.', error: err})
         } else {
-          jwt.verify(refresh_token, u.refresh_token_private_secret_key, (err, decoded) => {
+          jwt.verify(refresh_token, user.refresh_token_private_secret_key, (err, decoded) => {
             if (err) {
               log.error("refreshtoken() : Fail to verify refresh token : ", err)
               res.json({success: false, message: 'Token is invalid, fail to refresh token.', error: err})
             } else {
-              if (decoded.refresh_token_key === u.refresh_token_key) {
+              if (decoded.refresh_token_key === user.refresh_token_key) {
 
                 var payload = {
-                  user_id: u._id,
-                  access_token_valid_key: u.access_token_valid_key
+                  user_id: user._id,
+                  access_token_valid_key: user.access_token_valid_key
                 }
 
                 jwt.sign(payload, privateSecretKey, {
@@ -235,7 +247,7 @@ var sysController = {
           }
         })
       }
-    })
+    });
   },
 
   /**
@@ -292,7 +304,7 @@ var sysController = {
         log.error("update() : Cannot find the user : ", err)
         res.json({success: false, message: 'The user doesn\'t exist.', error: err})
       } else {
-        log.info("update() : New user info.", req.body)
+        log.debug("update() : New user info.", req.body)
         user.setPassword(req.body.userinfo.newpassword, () => {
           user.access_token_valid_key = '';
 
@@ -374,7 +386,7 @@ var sysController = {
       },
       (user, token, done) => {
         log.info("reset_password() : Reset password successfully.")
-        log.info("reset_password() : Token : ", token)
+        log.debug("reset_password() : Token : ", token)
         var mailOptions = {
           to: user.email,
           from: 'noreplay@public.com',
@@ -387,7 +399,7 @@ var sysController = {
             res.json({success: false, message: 'Fail to send the email.', error: err})
           } else {
             log.info("reset_password() : Send a Email successfully.")
-            res.json({success: true, message: 'The email has been sent successfully.'})
+            res.json({success: true, message: 'The email has been sent successfully.', emailtoken: token})
           }
         })
 
@@ -457,8 +469,7 @@ var sysController = {
   * @apiSuccess {user} user info.
   */
   post_reset_password(req, res) {
-    var token = req.params.token
-    console.log(token);
+    var token = req.params.token;
     async.waterfall([
       (done) => {
         var d = jwt.decode(token)
@@ -547,7 +558,7 @@ var sysController = {
         res.json({success: false, message: 'Something wrong with reseting password.', error: err})
       }
     })
-  },
+  }
 }
 
 module.exports = sysController
