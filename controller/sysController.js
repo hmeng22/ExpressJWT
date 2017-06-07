@@ -7,27 +7,8 @@ var User = require('../model/user')
 var jwt = require('jsonwebtoken')
 var privateSecretKey = require('fs').readFileSync('./privateSecret.key')
 
-var nodemailer = require('nodemailer')
-var transporter = nodemailer.createTransport({
-  host: process.env.EMAIL_CONFIG_HOST,
-  port: Number(process.env.EMAIL_CONFIG_PORT),
-  secure: process.env.EMAIL_CONFIG_SECURE === "true",
-  auth: {
-    user: process.env.EMAIL_CONFIG_AUTH_USER,
-    pass: process.env.EMAIL_CONFIG_AUTH_PASS
-  },
-  tls: {
-    // do not fail on invalid certs
-    rejectUnauthorized: process.env.EMAIL_CONFIG_TLS_REJECTUNAUTHORIZED === "true"
-  }
-})
-
-var winston = require('winston')
-var log = new(winston.Logger)({
-  level: process.env.LOG_LEVEL,
-  transports: [new(winston.transports.Console)()],
-  exitOnError: false
-});
+var transporter = require('../utils/tools').transporter
+var log = require('../utils/tools').log
 
 var sysController = {
   /**
