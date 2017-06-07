@@ -23,6 +23,11 @@ before((done) => {
   });
 });
 
+after((done) => {
+  db.dropDatabase();
+  done();
+});
+
 describe('Authorization :', () => {
   var token = null;
 
