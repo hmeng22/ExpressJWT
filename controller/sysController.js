@@ -56,7 +56,7 @@ var sysController = {
   * @apiParam {String} password Password (Mandatory)
   *
   * @apiUse ResponseJSON
-  * @apiSuccess {token} token info.
+  * @apiSuccess {Object} token Token object.
   */
   signin(req, res, next) {
     passport.authenticate('local', (err, user, info) => {
