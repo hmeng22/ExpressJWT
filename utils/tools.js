@@ -1,6 +1,9 @@
 var winston = require('winston')
+var loggingLevel = process.env.IS_TESTING
+  ? 'error'
+  : process.env.LOG_LEVEL
 var winstonLogger = new(winston.Logger)({
-  level: process.env.LOG_LEVEL,
+  level: loggingLevel,
   transports: [new winston.transports.Console({prettyPrint: true, colorize: true})],
   exitOnError: false
 })
