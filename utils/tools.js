@@ -1,5 +1,5 @@
 var winston = require('winston')
-var loggingLevel = new Boolean(process.env.IS_TESTING)
+var loggingLevel = process.env.IS_TESTING === "true"
   ? 'error'
   : process.env.LOG_LEVEL
 var winstonLogger = new(winston.Logger)({
