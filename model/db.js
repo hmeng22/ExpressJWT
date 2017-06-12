@@ -1,6 +1,6 @@
 var mongoose = require('mongoose');
 mongoose.Promise = global.Promise;
-if (process.env.IS_TESTING) {
+if (new Boolean(process.env.IS_TESTING)) {
   console.log('>>>>>>>>>>>>>>>>>>>>>>>>>>> -------------------- <<<<<<<<<<<<<<<<<<<<<<<<<<<');
   console.log('>>>>>>>>>>>>>>>>>>>>>>>>>>>   TESTING DATABASE   <<<<<<<<<<<<<<<<<<<<<<<<<<<');
   console.log('>>>>>>>>>>>>>>>>>>>>>>>>>>>   TESTING DATABASE   <<<<<<<<<<<<<<<<<<<<<<<<<<<');
