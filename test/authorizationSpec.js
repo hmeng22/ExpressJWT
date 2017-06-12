@@ -1,4 +1,4 @@
-process.env.IS_TESTING = true;
+process.env.IS_TESTING = "true";
 var server = require('../app');
 
 var chai = require('chai');
