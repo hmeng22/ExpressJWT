@@ -24,7 +24,7 @@ app.set('view engine', 'pug');
 
 // uncomment after placing your favicon in /public
 // app.use(favicon(path.join(__dirname, 'public', 'favicon.ico')));
-if (!process.env.IS_TESTING) {
+if (!new Boolean(process.env.IS_TESTING)) {
   app.use(logger('dev'));
 }
 app.use(bodyParser.json());
