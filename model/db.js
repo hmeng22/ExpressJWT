@@ -7,14 +7,14 @@ if (process.env.IS_TESTING === "true") {
   console.log('>>>>>>>>>>>>>>>>>>>>>>>>>>>   TESTING DATABASE   <<<<<<<<<<<<<<<<<<<<<<<<<<<');
   console.log('>>>>>>>>>>>>>>>>>>>>>>>>>>>   TESTING DATABASE   <<<<<<<<<<<<<<<<<<<<<<<<<<<');
   console.log('>>>>>>>>>>>>>>>>>>>>>>>>>>> -------------------- <<<<<<<<<<<<<<<<<<<<<<<<<<<');
-  mongoose.connect(process.env.MONGODB_ADDRESS_TESTING);
+  mongoose.connect(process.env.MONGODB_ADDRESS_TESTING, {useMongoClient: true});
 } else {
   console.log('>>>>>>>>>>>>>>>>>>>>>>>>>>> -------------------- <<<<<<<<<<<<<<<<<<<<<<<<<<<');
   console.log('>>>>>>>>>>>>>>>>>>>>>>>>>>> DEV || PROD DATABASE <<<<<<<<<<<<<<<<<<<<<<<<<<<');
   console.log('>>>>>>>>>>>>>>>>>>>>>>>>>>> DEV || PROD DATABASE <<<<<<<<<<<<<<<<<<<<<<<<<<<');
   console.log('>>>>>>>>>>>>>>>>>>>>>>>>>>> DEV || PROD DATABASE <<<<<<<<<<<<<<<<<<<<<<<<<<<');
   console.log('>>>>>>>>>>>>>>>>>>>>>>>>>>> -------------------- <<<<<<<<<<<<<<<<<<<<<<<<<<<');
-  mongoose.connect(process.env.MONGODB_ADDRESS);
+  mongoose.connect(process.env.MONGODB_ADDRESS, {useMongoClient: true});
 }
 
 var db = mongoose.connection;
