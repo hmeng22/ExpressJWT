@@ -4,7 +4,13 @@ var loggingLevel = process.env.IS_TESTING === "true"
   : process.env.LOG_LEVEL
 var winstonLogger = new(winston.Logger)({
   level: loggingLevel,
-  transports: [new winston.transports.Console({prettyPrint: true, colorize: true})],
+  transports: [new winston.transports.Console({
+      prettyPrint: true,
+      colorize: true,
+      timestamp: function() {
+        return moment().format('YYYY-MM-DD HH:mm:ss');
+      }
+    })],
   exitOnError: false
 })
 
