@@ -35,7 +35,7 @@ app.use(cors());
 
 // passport
 var passport = require("passport");
-var expressJwt = require('express-jwt');
+var expressJWT = require('express-jwt');
 app.use(passport.initialize());
 app.use(passport.session());
 
@@ -47,7 +47,7 @@ passport.deserializeUser(User.deserializeUser());
 // app.use('/v1/*', auth.authenticate());
 var jwt = require('jsonwebtoken');
 var privateSecretKey = require('fs').readFileSync('./privateSecret.key');
-app.use(['/v1/*', '/user', '/signout'], expressJwt({
+app.use(['/v1/*', '/user', '/signout'], expressJWT({
   secret: privateSecretKey,
   getToken: function(req) {
     // header authorization Bearer is handled by default
