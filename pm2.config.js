@@ -1,7 +1,7 @@
 module.exports = {
   apps: [
     {
-      name: "ExpressJWT",
+      name: "NodeTemplate",
       script: "./bin/www",
       // cluster mode
       // instances: 0,
